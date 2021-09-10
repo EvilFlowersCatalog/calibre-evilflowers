@@ -1,0 +1,9 @@
+.idea/
+venv
+__pycache__
+*.DS_Store
+*.pyc
+*.pyo
+*.log
+.env
+requirements.txt
