@@ -15,7 +15,7 @@ class EvilFlowersInterfacePlugin(InterfaceAction):
         base_plugin_object = self.interface_action_base_plugin
         do_user_config = base_plugin_object.do_user_config
 
-        d = EvilFlowersDialog(self.gui, self.qaction.icon(), do_user_config)
+        d = EvilFlowersDialog(self.gui, self.qaction.icon(), base_plugin_object)
         d.show()
 
     def apply_settings(self):

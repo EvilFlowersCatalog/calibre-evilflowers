@@ -3,22 +3,18 @@ from qt.core import QDialog, QVBoxLayout, QPushButton, QMessageBox, QLabel, QFon
 
 from calibre_plugins.evilflowers.config import prefs
 from calibre_plugins.evilflowers.model import OpdsEntriesModel
+from calibre_plugins.evilflowers.client.requestor import Requestor
 
 
 class EvilFlowersDialog(QDialog):
 
-    def __init__(self, gui, icon, do_user_config):
+    def __init__(self, gui, icon, plugin):
         QDialog.__init__(self, gui)
-        self.gui = gui
-        self.do_user_config = do_user_config
+        self._gui = gui
+        self._plugin = plugin
+        self._db = gui.current_db.new_api
 
-        # The current database shown in the GUI
-        # db is an instance of the class LibraryDatabase from db/legacy.py
-        # This class has many, many methods that allow you to do a lot of
-        # things. For most purposes you should use db.new_api, which has
-        # a much nicer interface from db/cache.py
-        self.db = gui.current_db.new_api
-        self.model = OpdsEntriesModel(self.db)
+        self.model = OpdsEntriesModel(self._db)
 
         self.setWindowTitle('EvilFlowers Plugin')
         self.setWindowIcon(icon)
@@ -69,5 +65,5 @@ class EvilFlowersDialog(QDialog):
         pass
 
     def config(self):
-        self.do_user_config(parent=self)
+        self._plugin.do_user_config(parent=self)
         self.label.setText(prefs['base_url'])

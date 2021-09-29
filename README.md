@@ -41,4 +41,4 @@ calibre-debug -s; calibre-customize -b . ; calibre
 - [calibre-opds-client](https://github.com/goodlibs/calibre-opds-client)
 
 ---
-Made with ❤️, 🍺 and ☕️ Jakub Dubec
+Made with ❤️ 🍺 and ☕️ Jakub Dubec

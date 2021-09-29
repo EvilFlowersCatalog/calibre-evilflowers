@@ -8,6 +8,7 @@ prefs = JSONConfig('plugins/evilflowers')
 prefs.defaults["base_url"] = "http://localhost:8000"
 prefs.defaults["catalog"] = "calibre"
 prefs.defaults["token"] = ''
+prefs.defaults["read_only"] = True
 
 
 class ConfigWidget(QWidget):
@@ -55,9 +56,17 @@ class ConfigWidget(QWidget):
         self.layout.addWidget(self.token_input, 3, 1)
         self.token_label.setBuddy(self.token_input)
 
+        # Read only
+        # Label
+        self.read_only_input = QCheckBox("Read-only mode", self)
+        self.read_only_input.setChecked(prefs["read_only"])
+        self.layout.addWidget(self.read_only_input, 4, 0)
+        label_column_widths.append(self.layout.itemAtPosition(4, 0).sizeHint().width())
+
         self.layout.setColumnMinimumWidth(1, max(label_column_widths) * 2)
 
     def save_settings(self):
         prefs["base_url"] = self.base_url_input.text()
         prefs["catalog"] = self.catalog_input.text()
         prefs["token"] = self.token_input.text()
+        prefs["read_only"] = self.read_only_input.isChecked()
