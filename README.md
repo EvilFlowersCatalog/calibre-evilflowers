@@ -13,7 +13,7 @@ Many thanks for the inspiration.
 **Work in progress**
 
 - [X] Config
-- [ ] OPDS Client
+- [ ] API Client
 - [ ] Main window
 - [ ] Sync process
 

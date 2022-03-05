@@ -3,7 +3,7 @@ from qt.core import QDialog, QVBoxLayout, QPushButton, QMessageBox, QLabel, QFon
 
 from calibre_plugins.evilflowers.config import prefs
 from calibre_plugins.evilflowers.model import OpdsEntriesModel
-from calibre_plugins.evilflowers.client.requestor import Requestor
+from calibre_plugins.evilflowers.client.api import ApiClient
 
 
 class EvilFlowersDialog(QDialog):
@@ -13,6 +13,7 @@ class EvilFlowersDialog(QDialog):
         self._gui = gui
         self._plugin = plugin
         self._db = gui.current_db.new_api
+        self._client = ApiClient(plugin)
 
         self.model = OpdsEntriesModel(self._db)
 
@@ -57,6 +58,8 @@ class EvilFlowersDialog(QDialog):
 
         self.l.addLayout(button_layout)
 
+        self.reload()
+
     def about(self):
         text = get_resources('about.txt')
         QMessageBox.about(self, 'About the EvilFlowers plugin', text.decode('utf-8'))
@@ -66,4 +69,11 @@ class EvilFlowersDialog(QDialog):
 
     def config(self):
         self._plugin.do_user_config(parent=self)
-        self.label.setText(prefs['base_url'])
+        self.reload()
+
+    def reload(self):
+        try:
+            status = self._client.status()
+            self.label.setText(f"{prefs['catalog']} @ {status['instance']}")
+        except Exception:
+            pass

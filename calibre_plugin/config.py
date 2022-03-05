@@ -1,4 +1,4 @@
-from qt.core import QCheckBox, QLineEdit, QGridLayout, QLabel, QWidget
+from qt.core import QCheckBox, QLineEdit, QGridLayout, QLabel, QWidget, QPlainTextEdit
 
 from calibre.utils.config import JSONConfig
 
@@ -7,7 +7,7 @@ prefs = JSONConfig('plugins/evilflowers')
 
 prefs.defaults["base_url"] = "http://localhost:8000"
 prefs.defaults["catalog"] = "calibre"
-prefs.defaults["token"] = ''
+prefs.defaults["api_key"] = ''
 prefs.defaults["read_only"] = True
 
 
@@ -46,15 +46,15 @@ class ConfigWidget(QWidget):
 
         # Token
         # Label
-        self.token_label = QLabel("Bearer token: ")
-        self.layout.addWidget(self.token_label, 3, 0)
+        self.api_key_label = QLabel("API Key: ")
+        self.layout.addWidget(self.api_key_label, 3, 0)
         label_column_widths.append(self.layout.itemAtPosition(3, 0).sizeHint().width())
 
         # Input
-        self.token_input = QLineEdit(self)
-        self.token_input.setText(prefs["token"])
-        self.layout.addWidget(self.token_input, 3, 1)
-        self.token_label.setBuddy(self.token_input)
+        self.api_key_input = QPlainTextEdit(self)
+        self.api_key_input.setPlainText(prefs["api_key"])
+        self.layout.addWidget(self.api_key_input, 3, 1)
+        self.api_key_label.setBuddy(self.api_key_input)
 
         # Read only
         # Label
@@ -68,5 +68,5 @@ class ConfigWidget(QWidget):
     def save_settings(self):
         prefs["base_url"] = self.base_url_input.text()
         prefs["catalog"] = self.catalog_input.text()
-        prefs["token"] = self.token_input.text()
+        prefs["api_key"] = self.api_key_input.toPlainText()
         prefs["read_only"] = self.read_only_input.isChecked()
