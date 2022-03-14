@@ -1,6 +1,6 @@
 # Calibre EvilFlowers plugin
 
-Calibre plugin for bi-directional synchronisation with [EvilFlowers](https://github.com/Sibyx/EvilFlowersCatalog)
+Calibre plugin for bidirectional synchronisation with [EvilFlowers](https://github.com/Sibyx/EvilFlowersCatalog)
 OPDS server.
 
 This project is heavily based on the [calibre-opds-client](https://github.com/goodlibs/calibre-opds-client) repository.
@@ -13,7 +13,7 @@ Many thanks for the inspiration.
 **Work in progress**
 
 - [X] Config
-- [ ] API Client
+- [X] API Client
 - [ ] Main window
 - [ ] Sync process
 

@@ -1,7 +1,7 @@
-from typing import Dict
-
-from calibre_plugins.evilflowers.config import prefs
 from calibre_plugins.evilflowers.client.requestor import Requestor
+from calibre_plugins.evilflowers.client.resources.users import UserResource
+from calibre_plugins.evilflowers.client.resources.status import StatusResource
+from calibre_plugins.evilflowers.client.resources.entries import EntryResource
 
 
 class ApiClient:
@@ -9,15 +9,18 @@ class ApiClient:
         self._plugin = base_plugin
         self._requestor = Requestor(base_plugin)
 
-    def _url(self, url: str) -> str:
-        return f"{prefs['base_url']}{url}"
+        self._users = UserResource(self._requestor)
+        self._entries = EntryResource(self._requestor)
+        self._status = StatusResource(self._requestor)
 
-    def me(self) -> Dict:
-        return self._requestor.get(
-            self._url('/api/v1/users/me')
-        )['response']
+    @property
+    def users(self) -> UserResource:
+        return self._users
 
-    def status(self) -> Dict:
-        return self._requestor.get(
-            self._url('/api/v1/status')
-        )['response']
+    @property
+    def entries(self) -> EntryResource:
+        return self._entries
+
+    @property
+    def status(self) -> StatusResource:
+        return self._status

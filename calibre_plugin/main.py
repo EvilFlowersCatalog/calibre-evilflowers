@@ -2,7 +2,7 @@ from qt.core import QDialog, QVBoxLayout, QPushButton, QMessageBox, QLabel, QFon
     QHeaderView, QAbstractItemView
 
 from calibre_plugins.evilflowers.config import prefs
-from calibre_plugins.evilflowers.model import OpdsEntriesModel
+from calibre_plugins.evilflowers.model import EntriesModel
 from calibre_plugins.evilflowers.client.api import ApiClient
 
 
@@ -15,11 +15,11 @@ class EvilFlowersDialog(QDialog):
         self._db = gui.current_db.new_api
         self._client = ApiClient(plugin)
 
-        self.model = OpdsEntriesModel(self._db)
+        self.model = EntriesModel(self._db, self._client)
 
         self.setWindowTitle('EvilFlowers Plugin')
         self.setWindowIcon(icon)
-        self.resize(800, 600)
+        self.resize(1000, 800)
 
         self.l = QVBoxLayout()
         self.setLayout(self.l)
@@ -32,11 +32,6 @@ class EvilFlowersDialog(QDialog):
         self.table = QTableView()
         self.table.setAlternatingRowColors(True)
         self.table.setModel(self.model)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.resizeColumnsToContents()
         self.l.addWidget(self.table)
@@ -73,7 +68,7 @@ class EvilFlowersDialog(QDialog):
 
     def reload(self):
         try:
-            status = self._client.status()
+            status = self._client.status.status()
             self.label.setText(f"{prefs['catalog']} @ {status['instance']}")
         except Exception:
             pass
