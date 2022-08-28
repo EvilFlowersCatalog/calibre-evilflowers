@@ -6,7 +6,7 @@ from calibre.utils.config import JSONConfig
 prefs = JSONConfig('plugins/evilflowers')
 
 prefs.defaults["base_url"] = "http://localhost:8000"
-prefs.defaults["catalog"] = "calibre"
+prefs.defaults["catalog_id"] = ''
 prefs.defaults["api_key"] = ''
 prefs.defaults["read_only"] = True
 
@@ -40,7 +40,7 @@ class ConfigWidget(QWidget):
 
         # Input
         self.catalog_input = QLineEdit(self)
-        self.catalog_input.setText(prefs["catalog"])
+        self.catalog_input.setText(prefs["catalog_id"])
         self.layout.addWidget(self.catalog_input, 2, 1)
         self.catalog_label.setBuddy(self.catalog_label)
 
@@ -67,6 +67,6 @@ class ConfigWidget(QWidget):
 
     def save_settings(self):
         prefs["base_url"] = self.base_url_input.text()
-        prefs["catalog"] = self.catalog_input.text()
+        prefs["catalog_id"] = self.catalog_input.text()
         prefs["api_key"] = self.api_key_input.toPlainText()
         prefs["read_only"] = self.read_only_input.isChecked()

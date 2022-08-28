@@ -1,5 +1,5 @@
 from qt.core import QDialog, QVBoxLayout, QPushButton, QMessageBox, QLabel, QFont, QHBoxLayout, QTableView, \
-    QHeaderView, QAbstractItemView
+    QHeaderView, QAbstractItemView, QProgressBar
 
 from calibre_plugins.evilflowers.config import prefs
 from calibre_plugins.evilflowers.model import EntriesModel
@@ -15,8 +15,6 @@ class EvilFlowersDialog(QDialog):
         self._db = gui.current_db.new_api
         self._client = ApiClient(plugin)
 
-        self.model = EntriesModel(self._db, self._client)
-
         self.setWindowTitle('EvilFlowers Plugin')
         self.setWindowIcon(icon)
         self.resize(1000, 800)
@@ -24,11 +22,21 @@ class EvilFlowersDialog(QDialog):
         self.l = QVBoxLayout()
         self.setLayout(self.l)
 
+        # Top label
         self.label = QLabel(f"{prefs['catalog']} @ {prefs['base_url']}")
         self.label.setFont(QFont('Arial', 40))
         self.l.addWidget(self.label)
 
+        # Progress bar
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setFont(QFont('Arial', 15))
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFormat("Nothing to do")
+        self.l.addWidget(self.progress_bar)
+
         # Table
+        self.model = EntriesModel(self._db, self._client, self.progress_bar)
         self.table = QTableView()
         self.table.setAlternatingRowColors(True)
         self.table.setModel(self.model)
@@ -60,7 +68,8 @@ class EvilFlowersDialog(QDialog):
         QMessageBox.about(self, 'About the EvilFlowers plugin', text.decode('utf-8'))
 
     def sync(self):
-        pass
+        for entry in self.model.entries():
+            print(entry.uuid)
 
     def config(self):
         self._plugin.do_user_config(parent=self)
@@ -69,6 +78,10 @@ class EvilFlowersDialog(QDialog):
     def reload(self):
         try:
             status = self._client.status.status()
-            self.label.setText(f"{prefs['catalog']} @ {status['instance']}")
+            if prefs['catalog']:
+                catalog = self.client.catalog.detail(prefs['catalog_id'])
+                self.label.setText(f"{catalog['catalog']} @ {status['instance']}")
+            else:
+                self.label.setText({status['instance']})
         except Exception:
             pass
