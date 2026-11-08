@@ -242,6 +242,34 @@ scripts/dev.sh reset       # delete .dev/config and .dev/library
   targeting Python 3.11 for Calibre 7).
 - Bump the version in `calibre_plugin/__init__.py` (the build reads it) and in
   `pyproject.toml`, and add an entry to `CHANGELOG.md`.
+  `python3 scripts/release.py check` tells you whether the three agree.
+
+### CI and releases
+
+GitHub Actions (`.github/workflows/`):
+
+- **CI** (`ci.yml`) runs on every push to `master` and every pull request: `ruff
+  check`, `ruff format --check`, the version check, the offline test suite under
+  Calibre on Linux (headless, against both the latest Calibre and 7.0.0, the oldest
+  version the plugin supports), and a build of the plugin ZIP, kept as a workflow
+  artifact. `test-dev` is not run: it needs a token for the dev catalog.
+- **Release** (`release.yml`) runs when you push a tag `vX.Y.Z`. It runs CI again,
+  checks that the tag matches the plugin version, builds the ZIP and publishes a
+  GitHub release with the ZIP attached and that version's CHANGELOG section as its
+  notes.
+
+To release:
+
+1. Set the version in `calibre_plugin/__init__.py` and `pyproject.toml`. Rename the
+   CHANGELOG's `## Unreleased` heading (if there is one) to `## X.Y.Z - YYYY-MM-DD`.
+2. `python3 scripts/release.py check vX.Y.Z`, then commit and push.
+3. `git tag vX.Y.Z` and `git push origin vX.Y.Z`.
+
+Calibre's *Get new plugins* window reads only the official index on
+`code.calibre-ebook.com`. That index is built from the plugin threads in the
+[MobileRead Calibre plugins forum](https://www.mobileread.com/forums/forumdisplay.php?f=237),
+and Calibre has no setting for another source. To be listed there, post the ZIP from a
+GitHub release to a thread in that forum and update the thread for each release.
 
 ## Resources
 

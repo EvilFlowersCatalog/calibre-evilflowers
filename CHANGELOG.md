@@ -4,6 +4,15 @@ All notable changes to this plugin. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- GitHub Actions: CI (lint, tests under Calibre on Linux, plugin ZIP build) on
+  every push and pull request, and a GitHub release with the plugin ZIP for every
+  `vX.Y.Z` tag. `scripts/release.py` checks that the version agrees everywhere and
+  extracts the release notes from this file.
+
 ## 2.1.0 - 2026-11-08
 
 ### Added

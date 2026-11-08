@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_call:  # release.yml runs the same checks before publishing
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx ruff check
+      - run: uvx ruff format --check
+      - name: Versions agree (plugin, pyproject.toml, CHANGELOG.md)
+        run: python3 scripts/release.py check
+
+  test:
+    # The offline suite under Calibre's own Python, headless (the tests set QT_QPA_PLATFORM=offscreen).
+    # 7.0.0 is the plugin's minimum_calibre_version; "latest" is whatever calibre-ebook.com ships today.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        calibre: [latest, 7.0.0]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Libraries Calibre's bundled Qt needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libopengl0 libglx0 libxcb-cursor0 libxkbcommon0 libxkbcommon-x11-0 \
+            libnss3 libfontconfig1 libdbus-1-3 xz-utils
+      - name: Install Calibre ${{ matrix.calibre }}
+        run: |
+          version_arg=""
+          if [ "${{ matrix.calibre }}" != "latest" ]; then version_arg="version=${{ matrix.calibre }}"; fi
+          wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh \
+            | sh /dev/stdin install_dir="$HOME/calibre-bin" isolated=y $version_arg
+          echo "CALIBRE_BIN=$HOME/calibre-bin/calibre" >> "$GITHUB_ENV"
+      - run: "$CALIBRE_BIN/calibre-debug --version"
+      - name: Offline test suite
+        run: bash scripts/dev.sh test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/build.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evilflowers-plugin
+          path: dist/*.zip
+          if-no-files-found: error
