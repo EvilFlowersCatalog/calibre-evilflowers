@@ -9,8 +9,8 @@ All notable changes to this plugin. The format follows
 ### Added
 
 - GitHub Actions: CI (lint, tests under Calibre on Linux, plugin ZIP build) on
-  every push and pull request, and a GitHub release with the plugin ZIP for every
-  `vX.Y.Z` tag. `scripts/release.py` checks that the version agrees everywhere and
+  every push and pull request; publishing a GitHub release attaches the plugin ZIP
+  to it. `scripts/release.py` checks that the version agrees everywhere and
   extracts the release notes from this file.
 
 ## 2.1.0 - 2026-11-08

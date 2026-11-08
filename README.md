@@ -253,17 +253,22 @@ GitHub Actions (`.github/workflows/`):
   Calibre on Linux (headless, against both the latest Calibre and 7.0.0, the oldest
   version the plugin supports), and a build of the plugin ZIP, kept as a workflow
   artifact. `test-dev` is not run: it needs a token for the dev catalog.
-- **Release** (`release.yml`) runs when you push a tag `vX.Y.Z`. It runs CI again,
-  checks that the tag matches the plugin version, builds the ZIP and publishes a
-  GitHub release with the ZIP attached and that version's CHANGELOG section as its
-  notes.
+- **Release** (`release.yml`) runs when a GitHub release is published. It runs CI
+  again on the release's tag, checks that the tag (`X.Y.Z` or `vX.Y.Z`) matches the
+  plugin version, builds the ZIP and attaches it to the release. A release published
+  with empty notes gets that version's CHANGELOG section.
 
 To release:
 
 1. Set the version in `calibre_plugin/__init__.py` and `pyproject.toml`. Rename the
    CHANGELOG's `## Unreleased` heading (if there is one) to `## X.Y.Z - YYYY-MM-DD`.
-2. `python3 scripts/release.py check vX.Y.Z`, then commit and push.
-3. `git tag vX.Y.Z` and `git push origin vX.Y.Z`.
+2. `python3 scripts/release.py check X.Y.Z`, then commit and push.
+3. Publish a release with a new tag `X.Y.Z`: on GitHub (*Releases → Draft a new
+   release*), or `gh release create X.Y.Z --title X.Y.Z --notes ""`. The ZIP appears
+   on the release a few minutes later.
+
+To attach the ZIP to a release that already exists, run *Actions → Release → Run
+workflow* with its tag.
 
 Calibre's *Get new plugins* window reads only the official index on
 `code.calibre-ebook.com`. That index is built from the plugin threads in the

@@ -1,38 +1,54 @@
 name: Release
 
-# Push a tag vX.Y.Z to publish a GitHub release with the plugin ZIP attached.
-# The tag must match the version in calibre_plugin/__init__.py and pyproject.toml,
-# and CHANGELOG.md must have a "## X.Y.Z - YYYY-MM-DD" section: it becomes the release notes.
+# Publish a GitHub release (web UI or `gh release create`) to build the plugin ZIP and
+# attach it to that release. The tag (2.1.0 or v2.1.0) must match the version in
+# calibre_plugin/__init__.py and pyproject.toml, and CHANGELOG.md must have a
+# "## X.Y.Z - YYYY-MM-DD" section. A release published without notes gets that section.
+#
+# For a release that already exists, run this workflow by hand (Actions → Release →
+# Run workflow) with its tag.
 
 on:
-  push:
-    tags: ["v*.*.*"]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of an existing release, e.g. 2.1.0
+        required: true
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  release:
+  attach:
     needs: ci
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
       - name: Tag matches the plugin version
-        run: python3 scripts/release.py check "$GITHUB_REF_NAME"
+        run: python3 scripts/release.py check "$TAG"
       - name: Build plugin ZIP
         run: python3 scripts/build.py
-      - name: Release notes from CHANGELOG.md
-        run: python3 scripts/release.py notes "$GITHUB_REF_NAME" > "$RUNNER_TEMP/notes.md"
-      - name: Publish GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Attach ZIP to the release
+        run: gh release upload "$TAG" dist/evilflowers-*.zip --clobber
+      - name: Fill empty release notes from CHANGELOG.md
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/evilflowers-*.zip \
-            --title "EvilFlowers for Calibre ${GITHUB_REF_NAME#v}" \
-            --notes-file "$RUNNER_TEMP/notes.md" \
-            --verify-tag
+          body="$(gh release view "$TAG" --json body --jq .body)"
+          if [ -z "$body" ]; then
+            python3 scripts/release.py notes "$TAG" > "$RUNNER_TEMP/notes.md"
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
