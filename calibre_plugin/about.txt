@@ -1,1 +1,11 @@
-Calibre plugin for bi-directional synchronisation with EvilFlowers OPDS server.
+EvilFlowers for Calibre
+
+Keeps this Calibre library in sync with a catalog on an EvilFlowers server, so the
+same books, metadata, covers and EPUB/PDF/MOBI files are available on every computer
+that syncs with that catalog.
+
+* Books new in Calibre are uploaded; entries new in the catalog are downloaded.
+* A change on one side is applied to the other. When both sides changed, you choose.
+* Nothing is ever deleted, on either side.
+
+https://github.com/EvilFlowersCatalog

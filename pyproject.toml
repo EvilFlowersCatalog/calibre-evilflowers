@@ -1,0 +1,24 @@
+# Tooling only. The plugin runs on Calibre's bundled Python and is not a pip package;
+# see scripts/dev.sh for building, installing and testing it.
+[project]
+name = "calibre-evilflowers"
+version = "2.0.0"
+requires-python = ">=3.11"  # Calibre 7.0 bundles Python 3.11
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["calibre_plugin/vendor"]  # vendored verbatim; see UPSTREAM.md
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # typographic quotes and arrows in UI strings are intended
+
+[tool.ruff.lint.per-file-ignores]
+# _(), get_icons() and get_resources() are builtins Calibre injects.
+"calibre_plugin/**" = ["F821"]
+"tests/**" = ["F821"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["calibre_plugin"]
+known-third-party = ["calibre", "qt"]

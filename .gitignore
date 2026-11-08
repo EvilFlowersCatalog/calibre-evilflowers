@@ -7,3 +7,8 @@ __pycache__
 *.log
 .env
 requirements.txt
+# isolated Calibre profile, dev library and secrets (scripts/dev.sh)
+.dev/
+dist/
+.ruff_cache/
+.mcp.json

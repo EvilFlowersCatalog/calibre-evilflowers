@@ -1,0 +1,68 @@
+--- a/transport.py
++++ b/transport.py
+@@ -43,14 +43,26 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
+ from dataclasses import dataclass
+ from email.message import Message
+ from pathlib import Path
+-from typing import IO, Any, TypeVar
++from typing import IO, Any, Protocol, TypeVar
+ 
+-from pydantic import BaseModel, ValidationError
++from ._version import __version__
++from .errors import CatalogError, describe, error_for_status
+ 
+-from evilflowers_protocol._version import __version__
+-from evilflowers_protocol.errors import CatalogError, describe, error_for_status
++__all__ = ["DEFAULT_USER_AGENT", "Model", "Payload", "Response", "Transport"]
+ 
+-__all__ = ["DEFAULT_USER_AGENT", "Response", "Transport"]
++
++# vendored: pydantic replaced by two structural protocols (Calibre bundles no pydantic).
++class Model(Protocol):
++    """A response model: builds itself from decoded JSON, raising KeyError/TypeError/ValueError on a mismatch."""
++
++    @classmethod
++    def from_dict(cls, data: Any) -> Any: ...
++
++
++class Payload(Protocol):
++    """A request body: serialises itself to a JSON-ready dict with unset fields left out."""
++
++    def to_dict(self) -> dict[str, Any]: ...
+ 
+ logger = logging.getLogger("evilflowers_protocol")
+ 
+@@ -63,7 +75,7 @@ CHUNK_SIZE = 64 * 1024
+ PAGE_LIMIT = 100
+ _MIME = re.compile(r"^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$")
+ 
+-_M = TypeVar("_M", bound=BaseModel)
++_M = TypeVar("_M", bound=Model)
+ _Body = bytes | Iterable[bytes]
+ 
+ 
+@@ -89,9 +101,9 @@ class Response:
+     def validate(self, model: type[_M], data: Any) -> _M:
+         """Validate ``data`` from this response as ``model``; a mismatch raises :class:`CatalogError`."""
+         try:
+-            return model.model_validate(data)
+-        except ValidationError as exc:
+-            message = f"unexpected response for {model.__name__}: {exc.error_count()} validation error(s)"
++            return model.from_dict(data)  # type: ignore[no-any-return]
++        except (KeyError, TypeError, ValueError) as exc:
++            message = f"unexpected response for {model.__name__}: {type(exc).__name__}: {exc}"
+             raise CatalogError(self.status, self.body, self.method, self.url, message) from exc
+ 
+ 
+@@ -154,9 +166,9 @@ class Transport:
+         """``GET`` a single object and validate it as ``model``."""
+         return self.request("GET", path, query=query).model(model)
+ 
+-    def send(self, method: str, path: str, payload: BaseModel, model: type[_M]) -> _M:
++    def send(self, method: str, path: str, payload: Payload, model: type[_M]) -> _M:
+         """Send ``payload`` as JSON (unset fields omitted) and validate the reply as ``model``."""
+-        body = payload.model_dump(mode="json", exclude_none=True)
++        body = payload.to_dict()
+         return self.request(method, path, json_body=body).model(model)
+ 
+     def iter_pages(self, path: str, model: type[_M], *, query: Mapping[str, str] | None = None) -> Iterator[_M]:
