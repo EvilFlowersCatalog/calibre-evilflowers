@@ -8,4 +8,14 @@ that syncs with that catalog.
 * A change on one side is applied to the other. When both sides changed, you choose.
 * Nothing is ever deleted, on either side.
 
-https://github.com/EvilFlowersCatalog
+From the button's menu you can also:
+
+* Browse catalog: search the catalog, download the books you pick, and manage your shelf.
+* Highlights for selected book: see what you highlighted while reading in EvilFlowers.
+  Highlights are read-only and come without notes.
+* Settings: sign in with your EvilFlowers account, pick a catalog, and choose to
+  download only books on your shelf.
+
+What's new in each version: CHANGELOG.md in the project repository.
+
+https://github.com/EvilFlowersCatalog/calibre-evilflowers

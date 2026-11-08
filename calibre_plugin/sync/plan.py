@@ -19,6 +19,13 @@ REMOTE_DELETED     book was synced, the entry is gone          skip (push re-cre
 =================  ==========================================  ============
 
 Nothing is ever deleted. ``direction`` turns pushes or pulls into skips.
+
+``shelf`` (the "only books on my shelf" setting) leaves out entries that would be
+REMOTE_ONLY and are not on the user's shelf. They get no row at all rather than a
+skipped one: a large catalog would otherwise bury the library under rows nobody
+asked for. Linked books, entries that share a UUID with a local book and entries
+this library synced before (LOCAL_DELETED) are never affected, so taking a book
+off the shelf never stops it syncing.
 """
 
 from __future__ import annotations
@@ -135,8 +142,12 @@ def build_plan(
     baselines: Mapping[int, Baseline],
     known_entries: frozenset[str],
     direction: Direction = Direction.BOTH,
+    shelf: frozenset[str] | None = None,
 ) -> list[PlanItem]:
-    """One item per book and per entry, matched by baseline link first, then by UUID."""
+    """One item per book and per entry, matched by baseline link first, then by UUID.
+
+    ``shelf`` is the entry ids on the user's shelf, or None to offer every entry.
+    """
     remote = {str(entry.id): entry for entry in entries}
     book_by_uuid = {book.uuid: book for book in books.values()}
     linked_by_baseline = {baseline.entry_id for book_id, baseline in baselines.items() if book_id in books}
@@ -175,6 +186,8 @@ def build_plan(
         if entry_id in linked_entry_ids or entry_id in book_by_uuid:
             continue
         state = State.LOCAL_DELETED if entry_id in known_entries else State.REMOTE_ONLY
+        if state is State.REMOTE_ONLY and shelf is not None and entry_id not in shelf:
+            continue  # not on the user's shelf: not offered for download
         items.append(_item(state, direction, entry=entry))
 
     return items

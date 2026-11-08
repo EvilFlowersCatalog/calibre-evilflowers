@@ -14,7 +14,7 @@ class EvilFlowersPlugin(InterfaceActionBase):
     )
     supported_platforms = ("windows", "osx", "linux")
     author = "Jakub Dubec"
-    version = (2, 0, 0)
+    version = (2, 1, 0)
     minimum_calibre_version = (7, 0, 0)  # Qt 6 + Python 3.11
 
     actual_plugin = "calibre_plugins.evilflowers.ui:EvilFlowersAction"

@@ -51,10 +51,65 @@ class CatalogRef:
 class UserRef:
     id: UUID
     username: str
+    name: str = ""
+    surname: str = ""
+
+    @property
+    def display_name(self) -> str:
+        """The person's full name for the UI, or the username when the server has no name."""
+        return " ".join(part for part in (self.name, self.surname) if part) or self.username
 
     @classmethod
     def from_dict(cls, data: Any) -> UserRef:
-        return cls(id=_uuid(data["id"]), username=str(data.get("username") or ""))
+        return cls(
+            id=_uuid(data["id"]),
+            username=str(data.get("username") or ""),
+            name=str(data.get("name") or ""),
+            surname=str(data.get("surname") or ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ApiKeyCreated:
+    """The reply to ``POST /api_keys``. ``token`` is returned only here, never by a later list."""
+
+    id: UUID
+    token: str
+    name: str
+
+    def __repr__(self) -> str:
+        # The token is a long-lived credential; keep it out of logs and tracebacks.
+        return f"{type(self).__name__}(id={self.id!r}, name={self.name!r})"
+
+    @classmethod
+    def from_dict(cls, data: Any) -> ApiKeyCreated:
+        return cls(id=_uuid(data["id"]), token=str(data["token"]), name=str(data.get("name") or ""))
+
+
+@dataclass(frozen=True, slots=True)
+class CategoryRef:
+    """A category as ``GET /categories`` returns it; ``label`` maps a language code to a translation."""
+
+    id: UUID
+    term: str
+    label: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def display_label(self) -> str:
+        """The English label, else any translation, else the term: never an empty string."""
+        for value in (self.label.get("en"), *self.label.values()):
+            if value:
+                return value
+        return self.term
+
+    @classmethod
+    def from_dict(cls, data: Any) -> CategoryRef:
+        label = data.get("label")
+        return cls(
+            id=_uuid(data["id"]),
+            term=str(data.get("term") or ""),
+            label={str(k): str(v) for k, v in label.items() if v} if isinstance(label, dict) else {},
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,12 +161,17 @@ class EntryRef:
 
     The live API (checked on dev, 2026-11-08) differs from the spec on ``main``: it
     sends ``authors`` and ``image`` where the spec says ``entry_authors`` and
-    ``image_url``. Both spellings are read. ``image`` is set even when the entry has
-    no cover, so :attr:`has_cover` goes by ``image_mime``.
+    ``image_url``. Both spellings are read. ``image`` and ``thumbnail`` are set
+    even when the entry has no cover (to the URL of the request itself), so
+    :attr:`has_cover` goes by ``image_mime`` and ``thumbnail`` is kept only with it.
 
     ``updated_at`` also moves when anyone downloads a file (the server saves the
     popularity counter), so it only says *something* changed. :meth:`fingerprint`
     says whether anything synchronised did.
+
+    ``shelf_record_id`` (set per user by the list endpoint) and ``thumbnail`` are for
+    browsing only. They stay out of :meth:`fingerprint`: neither is synchronised, and
+    adding them would make every baseline look changed.
     """
 
     id: UUID
@@ -127,6 +187,8 @@ class EntryRef:
     publisher: str | None = None
     published_at: str | None = None
     image_mime: str | None = None
+    shelf_record_id: UUID | None = None
+    thumbnail: str | None = None
 
     @property
     def has_cover(self) -> bool:
@@ -172,7 +234,122 @@ class EntryRef:
             publisher=data.get("publisher"),
             published_at=data.get("published_at"),
             image_mime=data.get("image_mime"),
+            shelf_record_id=_uuid(data["shelf_record_id"]) if data.get("shelf_record_id") else None,
+            # Without a cover the live server fills "thumbnail" with the request's own URL.
+            thumbnail=(data.get("thumbnail") or data.get("thumbnail_url")) if data.get("image_mime") else None,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EntryPage:
+    """One page of ``GET /entries``: what a browsing UI shows, plus where it is in the result."""
+
+    items: list[EntryRef]
+    page: int
+    pages: int
+    total: int
+
+
+@dataclass(frozen=True, slots=True)
+class Facets:
+    """Counts for narrowing a search (``GET /entries/facets``), most frequent first.
+
+    ``languages`` pairs an alpha2 code with a count. ``categories`` pairs a category id
+    with a count; the server sends no label, see ``CatalogClient.list_categories``.
+    """
+
+    languages: list[tuple[str, int]] = field(default_factory=list)
+    categories: list[tuple[UUID, int]] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: Any) -> Facets:
+        return cls(
+            languages=[
+                (str(item["code"]), int(item.get("count") or 0))
+                for item in data.get("languages") or ()
+                if item.get("code")
+            ],
+            categories=[(_uuid(item["id"]), int(item.get("count") or 0)) for item in data.get("categories") or ()],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ShelfRecord:
+    """An entry on the user's shelf. ``id`` is the record's own id, which removing it needs."""
+
+    id: UUID
+    entry_id: UUID
+    entry: EntryRef | None = None
+
+    @classmethod
+    def from_dict(cls, data: Any) -> ShelfRecord:
+        entry = data.get("entry")
+        entry_ref = EntryRef.from_dict(entry) if isinstance(entry, dict) else None
+        entry_id = entry_ref.id if entry_ref else _uuid(data["entry_id"])
+        return cls(id=_uuid(data["id"]), entry_id=entry_id, entry=entry_ref)
+
+
+@dataclass(frozen=True, slots=True)
+class UserAcquisitionRef:
+    """A user's access record for one file (``GET /user-acquisitions``); annotations hang off it."""
+
+    id: UUID
+
+    @classmethod
+    def from_dict(cls, data: Any) -> UserAcquisitionRef:
+        return cls(id=_uuid(data["id"]))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationRef:
+    """A set of marks a user (``highlight``) or an agent (``agent``) made in one file."""
+
+    id: UUID
+    title: str
+    kind: str
+    status: str
+
+    @classmethod
+    def from_dict(cls, data: Any) -> AnnotationRef:
+        return cls(
+            id=_uuid(data["id"]),
+            title=str(data.get("title") or ""),
+            kind=str(data.get("kind") or ""),
+            status=str(data.get("status") or ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationItemRef:
+    """One mark. The REST API sends no ``note`` or ``match``; ``text`` is the marked passage."""
+
+    id: UUID
+    page: int
+    content: str
+    text: str | None
+    created_at: str
+
+    @classmethod
+    def from_dict(cls, data: Any) -> AnnotationItemRef:
+        return cls(
+            id=_uuid(data["id"]),
+            page=int(data.get("page") or 0),
+            content=str(data.get("content") or ""),
+            text=data.get("text"),
+            created_at=str(data.get("created_at") or ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Highlight:
+    """A highlighted passage of an entry, flattened from annotation and item for display."""
+
+    annotation_title: str
+    kind: str
+    page: int
+    text: str | None
+    content: str
+    created_at: str
 
 
 # ------------------------------------------------------------------------------- requests

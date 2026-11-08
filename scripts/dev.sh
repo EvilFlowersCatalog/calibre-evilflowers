@@ -13,6 +13,8 @@
 #   scripts/dev.sh test-dev    run the end-to-end test against the dev catalog
 #   scripts/dev.sh calibredb … run calibredb against the dev library
 #   scripts/dev.sh debug f.py run a script under Calibre's Python with the dev profile and token
+#   scripts/dev.sh screenshots render every window, light and dark, to .dev/screenshots
+#                              (--docs: refresh docs/screenshots instead)
 #   scripts/dev.sh build       build dist/evilflowers-<version>.zip
 #   scripts/dev.sh reset       delete .dev/config and .dev/library
 #
@@ -91,6 +93,9 @@ case "$cmd" in
         load_token
         exec "$CALIBRE_BIN/calibre-debug" -e "$@"
         ;;
+    screenshots)
+        exec "$CALIBRE_BIN/calibre-debug" -e "$ROOT/scripts/screenshots.py" -- "$@"
+        ;;
     build)
         exec python3 "$ROOT/scripts/build.py"
         ;;
@@ -99,6 +104,6 @@ case "$cmd" in
         echo "Removed $DEV/config and $DEV/library"
         ;;
     *)
-        sed -n '2,20p' "$0"
+        sed -n '2,22p' "$0"
         ;;
 esac

@@ -117,9 +117,30 @@ class SyncEngine:
         # Backfill: every linked book's entry counts as known, so deleting the book later is detected.
         self._store.remember(baseline.entry_id for baseline in baselines.values())
         baselines = self._absorb_touches(entries, baselines)
-        plan = build_plan(books, entries, baselines, self._store.known_entries(), self._settings.direction)
-        self._progress(1.0, f"{len(books)} books, {len(entries)} entries")
+        shelf = self._shelf(entries) if self._settings.shelf_only else None
+        plan = build_plan(books, entries, baselines, self._store.known_entries(), self._settings.direction, shelf)
+        message = f"{len(books)} books, {len(entries)} entries"
+        if shelf is not None:
+            planned = {item.entry_id for item in plan}
+            hidden = sum(1 for entry in entries if str(entry.id) not in planned)
+            if hidden:
+                message += f", {hidden} not on your shelf"
+        self._progress(1.0, message)
         return plan
+
+    def _shelf(self, entries: list[EntryRef]) -> frozenset[str]:
+        """Entry ids on the user's shelf.
+
+        The entry list marks shelved entries itself (``shelf_record_id``), for every
+        shelf record of the user, so that costs no request. ``GET /shelf-records``
+        is only asked when no entry is marked: a server that does not send the field
+        must not make shelf-only sync hide everything. It hides records of public
+        catalogs the user is not a member of, so it is the fallback, not the source.
+        """
+        shelved = {str(entry.id) for entry in entries if entry.shelf_record_id is not None}
+        if not shelved:
+            shelved = {str(record.entry_id) for record in self._client.list_shelf(self._catalog.id)}
+        return frozenset(shelved)
 
     def _absorb_touches(self, entries: list[EntryRef], baselines: dict[int, Baseline]) -> dict[int, Baseline]:
         """Tell real remote edits from ``updated_at`` bumps that changed nothing synced.

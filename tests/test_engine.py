@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -52,8 +53,8 @@ class EngineTests(unittest.TestCase):
         path.write_bytes(content)
         return str(path)
 
-    def engine(self, db: Any, direction: Direction = Direction.BOTH) -> SyncEngine:
-        settings = Settings(self.fake.base_url, TOKEN, self.fake.catalog_url_name, direction)
+    def engine(self, db: Any, direction: Direction = Direction.BOTH, *, shelf_only: bool = False) -> SyncEngine:
+        settings = Settings(self.fake.base_url, TOKEN, self.fake.catalog_url_name, direction, shelf_only=shelf_only)
         return SyncEngine(db, self.client, self.catalog, settings)
 
     def states(self, db: Any) -> dict[str, State]:
@@ -215,6 +216,64 @@ class EngineTests(unittest.TestCase):
         self.sync(b)
         [pulled] = b.all_book_ids()
         self.assertEqual(set(b.formats(pulled)), {"EPUB"})
+
+    def test_shelf_only_downloads_shelved_entries_and_keeps_linked_books(self) -> None:
+        a = self.library("a")
+        linked = self.fake.add_remote_entry("Linked earlier", {EPUB: epub("l")})
+        self.sync(a)  # pulled while every entry was offered; not on the shelf
+        shelved = self.fake.add_remote_entry("On my shelf", {EPUB: epub("s")})
+        self.fake.add_remote_entry("Not on my shelf", {EPUB: epub("n")})
+        self.fake.add_shelf_record(shelved)
+        self.fake.edit_entry(linked, title="Linked, renamed")
+
+        progress: list[str] = []
+        engine = self.engine(a, shelf_only=True)
+        engine._progress = lambda _fraction, message: progress.append(message)
+        plan = engine.scan()
+        self.assertEqual(
+            {item.title: item.state for item in plan},
+            {"On my shelf": State.REMOTE_ONLY, "Linked earlier": State.REMOTE_CHANGED},
+        )
+        self.assertIn("1 not on your shelf", progress[-1])
+        self.assertEqual(engine.apply(plan).failed, [])
+        self.assertEqual(
+            sorted(a.all_field_for("title", a.all_book_ids()).values()), ["Linked, renamed", "On my shelf"]
+        )
+        self.assertNotIn(("GET", "/api/v1/shelf-records"), self.fake.requests, "the entry list already says")
+
+        # Shelf-only off again: the other entry is offered as usual.
+        self.assertEqual(self.states(a)["Not on my shelf"], State.REMOTE_ONLY)
+
+    def test_shelf_only_asks_the_shelf_when_entries_carry_no_shelf_ids(self) -> None:
+        a = self.library("a")
+        shelved = self.fake.add_remote_entry("On my shelf", {EPUB: epub("s")})
+        self.fake.add_remote_entry("Not on my shelf", {EPUB: epub("n")})
+        self.fake.add_shelf_record(shelved)
+        # A server that does not send shelf_record_id in the entry list.
+        iter_entries = self.client.iter_entries
+        self.client.iter_entries = lambda catalog_id: (  # type: ignore[method-assign]
+            replace(entry, shelf_record_id=None) for entry in iter_entries(catalog_id)
+        )
+        self.assertEqual([item.title for item in self.engine(a, shelf_only=True).scan()], ["On my shelf"])
+        self.assertIn(("GET", "/api/v1/shelf-records"), self.fake.requests)
+
+    def test_saving_highlights_to_a_column_keeps_books_in_sync(self) -> None:
+        from calibre_plugin.sync.highlights import save_to_column
+
+        setup = open_library(str(self.tmp / "a")).new_api
+        setup.create_custom_column("highlights", "Highlights", "comments", False)
+        setup.close()  # a new column appears only once the library is opened again
+        a = self.library("a")
+        in_sync = self.add_book(a, "Untouched", {"EPUB": epub("u")})
+        edited = self.add_book(a, "Edited", {"EPUB": epub("e")})
+        self.sync(a)
+        a.set_field("title", {edited: "Edited locally"})
+
+        save_to_column(a, "#highlights", {in_sync: "<p>one</p>", edited: "<p>two</p>"})
+        self.assertEqual(a.field_for("#highlights", in_sync), "<p>one</p>")
+        self.assertEqual(self.states(a), {"Untouched": State.IN_SYNC, "Edited locally": State.LOCAL_CHANGED})
+        with self.assertRaises(ValueError):
+            save_to_column(a, "#nope", {in_sync: "<p>x</p>"})
 
     def test_bad_token_fails_fast(self) -> None:
         from calibre_plugin.vendor.evilflowers_protocol.errors import Unauthorized

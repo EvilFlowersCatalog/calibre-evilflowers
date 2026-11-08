@@ -96,6 +96,28 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(states, {1: State.IN_SYNC, 2: State.LOCAL_ONLY})
         self.assertEqual(len(items), 2)
 
+    def test_shelf_only_leaves_out_new_entries_off_the_shelf(self) -> None:
+        shelved, other = entry(), entry()
+        items = build_plan({}, [shelved, other], {}, frozenset(), shelf=frozenset({str(shelved.id)}))
+        self.assertEqual([(i.entry_id, i.state) for i in items], [(str(shelved.id), State.REMOTE_ONLY)])
+
+    def test_shelf_only_keeps_linked_unlinked_and_deleted_books(self) -> None:
+        linked_uid, acq, same_uid, deleted_uid = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
+        books = {1: book(1, linked_uid, modified="L2"), 2: book(2, same_uid)}
+        entries = [entry(linked_uid, acquisitions=(acq,)), entry(same_uid), entry(deleted_uid)]
+        items = build_plan(
+            books, entries, {1: baseline(linked_uid, acq=acq)}, frozenset({linked_uid, deleted_uid}), shelf=frozenset()
+        )
+        states = {i.entry_id: i.state for i in items}
+        self.assertEqual(
+            states,
+            {linked_uid: State.LOCAL_CHANGED, same_uid: State.UNLINKED, deleted_uid: State.LOCAL_DELETED},
+        )
+
+    def test_no_shelf_offers_every_entry(self) -> None:
+        items = build_plan({}, [entry(), entry()], {}, frozenset(), shelf=None)
+        self.assertEqual([i.state for i in items], [State.REMOTE_ONLY, State.REMOTE_ONLY])
+
 
 if __name__ == "__main__":
     unittest.main()

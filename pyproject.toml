@@ -2,7 +2,7 @@
 # see scripts/dev.sh for building, installing and testing it.
 [project]
 name = "calibre-evilflowers"
-version = "2.0.0"
+version = "2.1.0"
 requires-python = ">=3.11"  # Calibre 7.0 bundles Python 3.11
 
 [tool.ruff]
